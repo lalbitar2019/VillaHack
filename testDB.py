@@ -9,10 +9,10 @@ config.read('conf.ini')
 cnxn = pyodbc.connect(config['Default']['DB'])
 cursor = cnxn.cursor()
 #Sample select query
-cursor.execute("SELECT * from students") 
+cursor.execute("SELECT * from images") 
 row = cursor.fetchone() 
 while row: 
-    print row[2] 
+    print row 
     row = cursor.fetchone()
 
 cnxn.close

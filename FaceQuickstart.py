@@ -29,12 +29,12 @@ def getRectangle(faceDictionary):
 
 def getEmotions(faceDictionary):
     emotions = faceDictionary['faceAttributes']['emotion']
-    returnDict = {'topemotion':None,'toppercent':0,'validemotions':[]}
+    returnDict = {'topemotion':None,'toppercent':0,'validemotions':{}}
 
     for emotion in emotions:
         percent = emotions[emotion] * 100
         if percent > 10:
-            returnDict['validemotions'].append({emotion:percent})
+            returnDict['validemotions'][emotion] = percent
             if percent > returnDict['toppercent']:
                 returnDict['topemotion'] = emotion
                 returnDict['toppercent'] = percent
@@ -54,9 +54,11 @@ def Who (faceDictionary):
             Who = name
     return Who
 
-cnxn = pyodbc.connect(config['Default']['DB'])
+conn = pyodbc.connect(config['Default']['DB'])
 try:
-    cursor = cnxn.cursor()
+    cursor = conn.cursor()
+    cursor.execute("insert into images(image_path, status) values ('"+img_url+"', 'PROCESSING')")
+    conn.commit()
     faces = CF.face.detect(img_url, attributes=['emotion'])
     print(faces)
 
@@ -68,10 +70,22 @@ try:
     draw = ImageDraw.Draw(img)
     for face in faces:
         draw.rectangle(getRectangle(face), outline='red')
-        print getEmotions(face)
-        print Who(face)
+        emotions = getEmotions(face)
+        print emotions
+        who = Who(face)
+        for emotion in emotions['validemotions']:
+            print emotion
+            analysisSQL = "INSERT INTO IMAGE_ANALYSIS(STUDENT_ID, EMOTION, PERCENTAGE, IMAGE_ID) values ((select ID FROM STUDENTS WHERE face_id = '"+squad[who]+"'), '"+emotion+"', "+str(int(emotions['validemotions'][emotion]))+", (select ID FROM IMAGES WHERE IMAGE_PATH = '"+img_url+"'))"
+            print analysisSQL
+            cursor.execute(analysisSQL)
 
     #Display the image in the users default image browser.
-    img.save(img_url.replace('.jpg', '_2.jpg'), 'JPEG')
+    img.save(img_url.replace('.jpg', config['Default']['Replace']), 'JPEG')
+    cursor.execute("update images set status = 'SUCCESS' where image_path = '"+img_url+"'")
+    conn.commit()
+except Exception as e:
+    cursor.execute("update images set status = 'FAIL' where image_path = '"+img_url+"'")
+    conn.commit()
+    raise e
 finally:
-    cnxn.close()
+    conn.close()
