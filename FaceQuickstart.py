@@ -74,6 +74,7 @@ try:
     #For each face returned use the face rectangle and draw a red box.
     draw = ImageDraw.Draw(img)
     font = ImageFont.truetype("Aaargh.ttf", 150)
+    emotionText = {}
     for face in faces:
         rec = getRectangle(face)
         drawrect(draw, rec, outline='red', width=5)
@@ -82,15 +83,19 @@ try:
         print emotions
         who = Who(face)
         draw.text( (rec[0][0], rec[0][1]) ,who,(255,255,255),font=font)
-        yShift = 0
         for emotion in emotions['validemotions']:
             print emotion
-            draw.text( ((rec[0][0] + rec[1][0])/2, (rec[0][1] + yShift)) ,emotion,(255,255,255),font=font)
-            yShift = yShift + 150
-            analysisSQL = "INSERT INTO IMAGE_ANALYSIS(STUDENT_ID, EMOTION, PERCENTAGE, IMAGE_ID) values ((select ID FROM STUDENTS WHERE face_id = '"+squad[who]+"'), '"+emotion+"', "+str(int(emotions['validemotions'][emotion]))+", (select ID FROM IMAGES WHERE IMAGE_PATH = '"+img_url+"'))"
+            if emotion not in emotionText:
+                emotionText[emotion] = []
+            emotionText[emotion].append(who[0])
+            # analysisSQL = "INSERT INTO IMAGE_ANALYSIS(STUDENT_ID, EMOTION, PERCENTAGE, IMAGE_ID) values ((select ID FROM STUDENTS WHERE face_id = '"+squad[who]+"'), '"+emotion+"', "+str(int(emotions['validemotions'][emotion]))+", (select ID FROM IMAGES WHERE IMAGE_PATH = '"+img_url+"'))"
             # print analysisSQL
             # cursor.execute(analysisSQL)
-
+    yShift = 0
+    for emotion in emotionText:
+        drawTxt = emotion + ':' + ','.join(emotionText[emotion])
+        draw.text( (0, (0 + yShift)) ,drawTxt,(255,255,255),font=font)
+        yShift = yShift + 150
     #Display the image in the users default image browser.
     img.save(img_url.replace('.jpg', config['Default']['Replace']), 'JPEG')
     # cursor.execute("update images set status = 'SUCCESS' where image_path = '"+img_url+"'")
